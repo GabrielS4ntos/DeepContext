@@ -91,15 +91,28 @@ Set the API key required by the selected chat and embedding providers. Model ide
 
 ```bash
 cp agent/.env.example agent/.env
-docker compose up --build
+make up
 ```
 
 The mock web interface is available at `http://localhost:3000`, the API at `http://localhost:8000`, and Qdrant at `http://localhost:6333`.
 
+The root `Makefile` provides shortcuts for the complete stack and individual services:
+
+```bash
+make help      # list available commands
+make up        # build and start the complete stack
+make web       # start only the mocked web chat
+make agent     # start the agent and its Qdrant dependency
+make qdrant    # start only Qdrant
+make logs      # follow logs from all services
+make ps        # show service status
+make down      # stop the stack
+```
+
 The first local Qdrant volume is empty. Populate it using external tooling, connect the agent to an external Qdrant URL, or reuse a pre-populated Docker volume:
 
 ```bash
-QDRANT_VOLUME_NAME=my-existing-qdrant-volume docker compose up --build
+QDRANT_VOLUME_NAME=my-existing-qdrant-volume make up
 ```
 
 Data population and document embeddings deliberately live outside this repository. Web research can still operate while local semantic memory is empty.
