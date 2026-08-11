@@ -15,7 +15,7 @@ from langchain_core.messages import (
     ToolMessage,
 )
 from langchain_core.tools import StructuredTool
-from langgraph.graph import END, START, StateGraph
+from langgraph.graph import START, StateGraph
 from langgraph.graph.message import add_messages
 
 from deepcontext.capabilities import SemanticMemory, WebResearch
@@ -140,7 +140,7 @@ class ResearchWorkflow:
             and state["iterations"] < self.config.max_iterations
         ):
             return "tools"
-        return END
+        return "__end__"
 
     def _build_graph(self):
         builder = StateGraph(ResearchState)
