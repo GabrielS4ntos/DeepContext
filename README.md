@@ -109,3 +109,45 @@ kubectl apply -k k8s
 
 Qdrant is externally managed in the Kubernetes baseline.
 
+## Implementation details
+
+### Conversational flow with LangGraph
+
+The research loop is implemented as a compiled LangGraph `StateGraph`. Its state carries the message history for the current request, the number of completed reasoning iterations, normalized source metadata, and a flag indicating whether a dependency failed partially.
+
+The `assistant` node invokes the configured chat model with the research instructions and tool definitions. When the model returns tool calls, conditional routing sends execution to the `tools` node. Tool results are appended as `ToolMessage` instances and control returns to `assistant`, allowing the model to inspect evidence, refine its search, and decide whether another retrieval step is necessary. The workflow stops when the model produces a final response or reaches `DEEPCONTEXT_MAX_ITERATIONS`.
+
+`thread_id` is used only for correlation in API events and telemetry. DeepContext does not persist conversations or require a checkpoint database.
+
+### Semantic memory with Qdrant
+
+Qdrant is a read-only vector database from the agent's perspective. For every semantic-memory tool call, DeepContext:
+
+1. Prepares the query according to model conventions, including the E5 `query:` prefix when required.
+2. Creates the query vector with LangChain's multi-provider `init_embeddings` interface.
+3. Calls `AsyncQdrantClient.query_points` against the configured existing collection.
+4. Applies the configured score threshold and candidate limit.
+5. Normalizes payload fields and limits repeated chunks from the same source.
+6. Returns the selected evidence to the LangGraph workflow as a tool result.
+
+The embedding provider and model are configurable independently from the chat model. The query embedding must have the same dimension and semantic space as the document vectors already stored in Qdrant.
+
+### Web search and tool calling
+
+Web search is exposed to the model as a typed LangChain tool alongside semantic memory. The current adapter uses OpenRouter's web plugin and converts URL annotations into the same source structure used by Qdrant results. This gives the workflow one consistent representation for citations regardless of where the evidence came from.
+
+Tool failures are returned to the model as structured observations. The workflow can continue with the remaining capability and marks the final result as `partial` when appropriate. If no usable evidence is collected, the API returns a `503 research_sources_unavailable` error instead of an ungrounded answer.
+
+### Observability
+
+OpenTelemetry instrumentation is optional and activated when `OTEL_EXPORTER_OTLP_ENDPOINT` is configured. It exports FastAPI traces, metrics, and application logs through OTLP. Langfuse callbacks are attached to LangGraph executions when `LANGFUSE_PUBLIC_KEY` and `LANGFUSE_SECRET_KEY` are present, providing visibility into model calls, tool calls, latency, and the full reasoning run without making observability a startup dependency.
+
+### HTTP and streaming
+
+FastAPI exposes synchronous and SSE research endpoints. Both use the same compiled workflow and response contracts. The streaming endpoint emits `metadata`, `token`, and one terminal `result` or `error` event. Shared Qdrant and HTTP clients are created during application lifespan and closed cleanly at shutdown.
+
+## LangGraph workflow
+
+The graph structure is generated from the compiled workflow with `workflow.graph.get_graph().draw_mermaid()`. The resulting Mermaid definition is rendered by the accompanying [HTML view](docs/langgraph-workflow.html) and captured as the image below.
+
+![DeepContext LangGraph autonomous research workflow](docs/assets/langgraph-workflow.png)
