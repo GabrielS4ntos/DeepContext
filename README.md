@@ -4,16 +4,49 @@ DeepContext is an autonomous research agent with web search, Qdrant-powered sema
 
 It is intentionally domain-neutral. The agent generates an embedding only for the incoming query, searches an existing Qdrant collection, optionally searches the web, and synthesizes a grounded response with source metadata. It never creates collections, ingests documents, or mutates stored points.
 
+## Research workspace
+
+![DeepContext research workspace](docs/assets/web-chat.png)
+
+The mocked React workspace demonstrates the complete research experience without contacting the API: staged reasoning, streamed answers, normalized sources, cancellation, retries, failures, and partial results.
+
+<table>
+  <tr>
+    <td width="50%">
+      <strong>Grounded research</strong><br />
+      Semantic memory and web evidence remain visible alongside the synthesized answer.
+    </td>
+    <td width="50%">
+      <strong>Graceful degradation</strong><br />
+      Usable evidence is preserved when a research source becomes unavailable.
+    </td>
+  </tr>
+  <tr>
+    <td><img src="docs/assets/web-chat-research.png" alt="DeepContext completed research" /></td>
+    <td><img src="docs/assets/web-chat-partial.png" alt="DeepContext evidence-limited research" /></td>
+  </tr>
+</table>
+
 ## Monorepo layout
 
 ```text
 agent/       Python research-agent API
-backend/     reserved for a future web application backend
-frontend/    reserved for a future web client
-pipelines/   reserved for future workflow definitions
+web/         React research chat
 k8s/         Kubernetes baseline
-compose.yaml local agent and Qdrant stack
+compose.yaml local web, agent, and Qdrant stack
 ```
+
+## Web chat
+
+`web/` contains a React + Vite chat interface for the DeepContext research flow. The current UI is a self-contained mock: it simulates planning, semantic-memory retrieval, web research, token streaming, complete or partial results, errors, cancellation, retries, and source cards without making any network request.
+
+```bash
+cd web
+npm install
+npm run dev
+```
+
+Open `http://localhost:5173`. The mock transport is intentionally isolated behind `useResearchSession`, so it can later be replaced by the `/v1/research/stream` SSE endpoint without changing presentation components.
 
 ## How research works
 
@@ -61,7 +94,7 @@ cp agent/.env.example agent/.env
 docker compose up --build
 ```
 
-The API is available at `http://localhost:8000`; Qdrant is available at `http://localhost:6333`.
+The mock web interface is available at `http://localhost:3000`, the API at `http://localhost:8000`, and Qdrant at `http://localhost:6333`.
 
 The first local Qdrant volume is empty. Populate it using external tooling, connect the agent to an external Qdrant URL, or reuse a pre-populated Docker volume:
 
