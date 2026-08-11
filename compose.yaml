@@ -1,4 +1,16 @@
 services:
+  web:
+    build:
+      context: .
+      dockerfile: web/Dockerfile
+    ports:
+      - "3000:80"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
   agent:
     build:
       context: .
@@ -35,4 +47,3 @@ services:
 volumes:
   qdrant-data:
     name: ${QDRANT_VOLUME_NAME:-deepcontext-qdrant-data}
-

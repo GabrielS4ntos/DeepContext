@@ -1,5 +1,7 @@
 .git
 **/.venv
+**/node_modules
+**/dist
 **/__pycache__
 **/.pytest_cache
 **/.mypy_cache
@@ -7,4 +9,3 @@
 **/.env
 htmlcov
 test-reports
-
